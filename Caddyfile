@@ -19,13 +19,14 @@
         try_files {path} {path}/ /index.php?{query}
     }
 
-    # 6. 보안 설정: 민감한 파일 접근 차단
+    # 6. 보안 설정: 정말 민감한 파일만 접근 차단
     @forbidden {
+        # 설정 파일은 절대 외부에서 보이면 안 됩니다.
         path /files/config/*
-        path /files/cache/*
-        path /common/tpl/*
         path /config/*.php
+        # 그 외 .env 나 .git 같은 숨김 파일 차단
         path /.*
     }
+    # /files/cache/* 는 JS/CSS 로딩을 위해 열어두어야 하므로 위 목록에서 제외했습니다.
     error @forbidden 403
 }
