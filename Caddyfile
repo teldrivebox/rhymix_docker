@@ -1,0 +1,31 @@
+:{$MY_PORT} {
+    # 1. root 설정 (라이믹스 설치 경로)
+    root * /var/www/html
+
+    # 2. 업로드 용량 설정 (Nginx의 client_max_body_size 32m 대응)
+    request_body {
+        max_size 32MB
+    }
+
+    # 3. PHP-FPM 연동 (Nginx의 fastcgi_pass 127.0.0.1:9000 대응)
+    php_fastcgi localhost:9000
+
+    # 4. 파일 서버 활성화 (index.php 자동 인식 포함)
+    file_server
+
+    # 5. 라이믹스 전용 Rewrite 규칙 (Nginx의 include snippets/rhymix.conf 대응)
+    # 파일이나 폴더가 없을 때만 index.php로 넘기는 '가장 깔끔한' 방식입니다.
+    handle {
+        try_files {path} {path}/ /index.php?{query}
+    }
+
+    # 6. 보안 설정: 민감한 파일 접근 차단
+    @forbidden {
+        path /files/config/*
+        path /files/cache/*
+        path /common/tpl/*
+        path /config/*.php
+        path /.*
+    }
+    error @forbidden 403
+}
