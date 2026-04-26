@@ -19,18 +19,26 @@ RUN groupadd -g 1000 rhymix && \
 RUN sed -i "s/user = www-data/user = rhymix/g" /usr/local/etc/php-fpm.d/www.conf && \
     sed -i "s/group = www-data/group = rhymix/g" /usr/local/etc/php-fpm.d/www.conf
 
-# 5. php.ini 설정 (session.auto_start 및 라이믹스 권장값)
+# 5. [수정됨] php.ini 설정 (session.auto_start 및 라이믹스 권장값)
 RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini && \
-    sed -i 's/session.auto_start = 1/session.auto_start = 0/g' /usr/local/etc/php/php.ini && \
-    echo "session.auto_start = 0" >> /usr/local/etc/php/php.ini && \
-    echo "opcache.enable=1" >> /usr/local/etc/php/php.ini
+    { \
+        echo "session.auto_start = Off"; \
+        echo "date.timezone = Asia/Seoul"; \
+        echo "memory_limit = 512M"; \
+        echo "post_max_size = 128M"; \
+        echo "upload_max_filesize = 100M"; \
+        echo "opcache.enable=1"; \
+        echo "opcache.memory_consumption=128"; \
+        echo "opcache.interned_strings_buffer=8"; \
+        echo "opcache.max_accelerated_files=10000"; \
+        echo "opcache.revalidate_freq=2"; \
+    } >> /usr/local/etc/php/php.ini
 
 # 6. 설정 파일 및 환영 파일 복사
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY welcome.php /usr/local/bin/welcome.php
 
-# 7. Supervisor 설정 생성 (로그/PID 경로 격리 반영)
-# logfile과 pidfile을 /var/log와 /run으로 옮겨 소스 폴더를 깨끗하게 유지합니다.
+# 7. Supervisor 설정 생성
 RUN printf "[supervisord]\n\
 nodaemon=true\n\
 user=root\n\
@@ -53,7 +61,7 @@ stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\
 stderr_logfile_maxbytes=0\n" > /etc/supervisord.conf
 
-# 8. Entrypoint 스크립트 작성 (지능형 권한 매칭 로직 유지)
+# 8. Entrypoint 스크립트 작성
 RUN printf "#!/bin/bash\n\
 USER_ID=\${PUID:-1000}\n\
 GROUP_ID=\${PGID:-1000}\n\
