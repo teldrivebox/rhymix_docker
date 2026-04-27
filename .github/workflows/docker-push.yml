@@ -30,7 +30,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          # latest 태그와 함께 릴리즈 버전(v1.0.0 등) 태그도 자동으로 붙입니다.
+# 태그 로직 보강
           tags: |
             teldrivebox/rhymix-caddy-php:latest
-            teldrivebox/rhymix-caddy-php:${{ github.event.release.tag_name }}
+            ${{ github.event.release.tag_name != '' && format('teldrivebox/rhymix-caddy-php:{0}', github.event.release.tag_name) || 'teldrivebox/rhymix-caddy-php:manual' }}
