@@ -1,4 +1,4 @@
-name: Build and Push to Docker Hub
+name: Build and Push to Docker Hub (Release)
 
 on:
   release:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   docker:
-    runs-on: ubuntu-latest # GitHub이 제공하는 무료 서버 (내 서버 CPU 소모 0)
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,6 +28,9 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64 # x86과 ARM 둘 다 빌드
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: teldrivebox/rhymix-caddy-php:latest
+          # latest 태그와 함께 릴리즈 버전(v1.0.0 등) 태그도 자동으로 붙입니다.
+          tags: |
+            teldrivebox/rhymix-caddy-php:latest
+            teldrivebox/rhymix-caddy-php:${{ github.event.release.tag_name }}
