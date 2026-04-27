@@ -5,34 +5,64 @@ on:
   workflow_dispatch: # 여전히 수동 버튼으로도 실행 가능하게 유지
 
 jobs:
-  multi-arch-build:
-    runs-on: ubuntu-latest # 아까 확인한 그 러너가 실행함
+  # 1. x86(amd64) 빌드 - 미니 PC가 담당
+  build-amd64:
+    runs-on: linux-amd64
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # 1. x86(amd64) 빌드를 가능하게 해주는 도구 설치
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      # 2. 멀티 아키텍처 빌드 도구 설정
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # 3. 도커 허브 로그인 (아이디/비번은 Gitea 설정에서 넣을 겁니다)
+      - uses: actions/checkout@v4
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # 4. 드디어 빌드 시작!
-      - name: Build and Push
+      - name: Build and Push amd64
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64 # <--- x86과 ARM 둘 다 만든다!
+          platforms: linux/amd64
           push: true
-          tags: |
-            teldrivebox/rhymix-caddy-php:latest
-            teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}
+          tags: teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}-amd64
+
+  # 2. ARM(arm64) 빌드 - OCI 서버가 담당
+  build-arm64:
+    runs-on: linux-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and Push arm64
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}-arm64
+
+  # 3. 매니페스트 합치기 (최종본 생성)
+  manifest:
+    runs-on: linux-amd64 # 혹은 ubuntu-latest
+    needs: [build-amd64, build-arm64]
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Create and Push Manifest
+        run: |
+          # 개별 이미지를 하나로 묶어주는 작업입니다.
+          docker manifest create teldrivebox/rhymix-caddy-php:latest \
+            teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}-amd64 \
+            teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}-arm64
+          
+          docker manifest push teldrivebox/rhymix-caddy-php:latest
+          
+          # 태그 버전도 동일하게 처리
+          docker manifest create teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }} \
+            teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}-amd64 \
+            teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}-arm64
+          
+          docker manifest push teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}
