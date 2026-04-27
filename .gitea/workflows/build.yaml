@@ -1,0 +1,35 @@
+name: Docker Build
+# 코드를 올려도 자동으로 실행되지 않고, 버튼을 눌러야 실행됨
+on: [workflow_dispatch]
+# on: [push] # 코드를 올릴 때마다 실행
+
+jobs:
+  multi-arch-build:
+    runs-on: ubuntu-latest # 아까 확인한 그 러너가 실행함
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. x86(amd64) 빌드를 가능하게 해주는 도구 설치
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 2. 멀티 아키텍처 빌드 도구 설정
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 도커 허브 로그인 (아이디/비번은 Gitea 설정에서 넣을 겁니다)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. 드디어 빌드 시작!
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64 # <--- x86과 ARM 둘 다 만든다!
+          push: true
+          tags: teldrivebox/rhymix-caddy-php:latest
