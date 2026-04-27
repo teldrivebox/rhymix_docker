@@ -1,7 +1,8 @@
 name: Docker Build
-# 코드를 올려도 자동으로 실행되지 않고, 버튼을 눌러야 실행됨
-on: [workflow_dispatch]
-# on: [push] # 코드를 올릴 때마다 실행
+on:
+  release:
+    types: [published] # Gitea에서 릴리즈를 게시(Publish)했을 때 실행
+  workflow_dispatch: # 여전히 수동 버튼으로도 실행 가능하게 유지
 
 jobs:
   multi-arch-build:
@@ -32,4 +33,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64 # <--- x86과 ARM 둘 다 만든다!
           push: true
-          tags: teldrivebox/rhymix-caddy-php:latest
+          tags: |
+            teldrivebox/rhymix-caddy-php:latest
+            teldrivebox/rhymix-caddy-php:${{ gitea.ref_name }}
